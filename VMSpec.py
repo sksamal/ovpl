@@ -14,5 +14,3 @@ class VMSpec:
         self.swap = "512M"
         self.min_diskspace = "2G"
         self.max_diskspace = "2.5G"
-        self.ip_address = "10.10.10.10"
-        self.name_server = "10.10.10.10"
