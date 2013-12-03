@@ -3,15 +3,24 @@
 
 """ An interface for managing VMs for a selected platform. """
 
+__all__ = [
+    'CentOSVZAdapter',
+    'CentOSKVMAdapter',
+    'AWSAdapter',
+    'EucalyptusAdapter',
+    ]
+
 # Standard Library imports
 import re
 import subprocess
+from exceptions import Exception
 
 # Third party imports
 import netaddr
 
 # VLEAD imports
 import VMSpec
+import VMUtils
 
 # UGLY DUCK PUNCHING: Backporting check_output from 2.7 to 2.6
 if "check_output" not in dir(subprocess):
@@ -37,11 +46,13 @@ VZCTL = "/usr/sbin/vzctl"
 VZLIST = "/usr/sbin/vzlist -a"
 HOST_NAME = "vlabs.ac.in"
 LAB_ID = "engg01"
-OS = "Ubuntu"
-OS_VERSION = "12.04"
-RAM = "256M"
-SWAP = "512M"
+MAX_VM_ID = 2147483644      # 32-bit; exact value based on trial-and-error
 
+
+
+class InvalidVMIDException(Exception):
+    def __init__(self, msg):
+        Exception.__init__(self, msg)
 
 
 class CentOSVZAdapter:
@@ -66,7 +77,7 @@ class CentOSVZAdapter:
         # Start VMManager on the VM
         pass
         # Return VMManager's signature
-        #return ("ipaddress", "port")
+        #return ("ip_address", "port")
         pass
 
     def destroy_VM(self, VM_ID):
@@ -89,15 +100,14 @@ class CentOSVZAdapter:
         """ Returns a tuple of vzctl create arguments and set arguments """
         lab_ID = LAB_ID if VM_spec.lab_ID == "" else VM_spec.lab_ID
         host_name = lab_ID + "." + HOST_NAME
-        os_template = self._find_os_template(VM_spec.os, VM_spec.os_version)
         ip_address = self._find_available_ip()
-        (ram, swap) = self._find_ram_swap(VM_spec.ram, VM_spec.swap)
-        (min_diskspace, max_diskspace) = self._find_disk_space(
-                                                    VM_spec.min_diskspace,
-                                                    VM_spec.max_diskspace)
+        self.ip_address = ip_address
+        os_template = VMUtils.find_os_template(VM_spec.os, VM_spec.os_version)
+        (ram, swap) = VMUtils.get_ram_swap(VM_spec.ram, VM_spec.swap)
+        (disk_soft, disk_hard) = VMUtils.get_disk_space(VM_spec.diskspace)
         VM_create_args = " --ostemplate " + os_template + \
                          " --ipadd " + ip_address + \
-                         " --diskspace " + min_diskspace + ":" + max_diskspace + \
+                         " --diskspace " + disk_soft + ":" + disk_hard + \
                          " --hostname " + host_name
         # Note to self: check ram format "0:256M" vs "256M"
         VM_set_args = " --nameserver " + NAME_SERVER + \
@@ -113,56 +123,25 @@ class CentOSVZAdapter:
             ip_network = netaddr.IPNetwork(subnet)
             for ip in list(ip_network):
                 if ip == ip_network.network or ip == ip_network.broadcast:
-                    # Skip if IP is the network IP or broadcast IP
                     # e.g. 192.0.2.0 or 192.0.2.255 for subnet 192.0.2.0/24
                     continue
                 else:
                     ip_address = str(ip)
-                    if ip_address in used_ips:
-                        continue
-                    else:
+                    if ip_address not in used_ips:
                         return ip_address
-
-    @staticmethod
-    def _find_ram_swap(ram, swap):
-        
-        return ("256M", "512M")
-
-    @staticmethod
-    def _find_disk_space(min_diskspace, max_diskspace):
-        #min_diskspace = "2G"; max_diskspace = "2.5G"
-        return ("2G", "2.5G")
-
-    @staticmethod
-    def _find_os_template(os, os_version):
-        # What to do when request comes for unavailable OS/version?
-        os = OS.upper() if os == "" else os.strip().upper()
-        os_version = OS_VERSION if os_version == "" else os_version.strip()
-        if os == "UBUNTU":
-            if os_version == "12.04" or os_version == "12":
-                return "ubuntu-12.04-x86_64"
-            elif os_version == "11.10" or os_version == "11":
-                return "ubuntu-11.10-x86_64"
-        elif os == "CENTOS":
-            if os_version == "6.3":
-                return "centos-6.3-x86_64"
-            elif os_version == "6.2":
-                return "centos-6.2-x86_64"
-        elif os == "DEBIAN":
-            if os_version == "6.0" or os_version == "6":
-                return "debian-6.0-x86_64"
-        else:
-            pass
 
     @staticmethod
     def _validate_VM_ID(VM_ID):
         VM_ID = str(VM_ID).strip()
-        m = re.match(r'^[0-9]+$', VM_ID)
+        m = re.match(r'^([0-9]+)$', VM_ID)
         if m == None:
-            print "Invalid VM ID.  VM ID must be numeric."
-            return
-        else:
-            return VM_ID
+            raise InvalidVMIDException("Invalid VM ID.  VM ID must be numeric.")
+        VM_ID = int(m.group(0))
+        if VM_ID <= 100:
+            raise InvalidVMIDException("Invalid VM ID.  VM ID must be greater than 100.")
+        if VM_ID > MAX_VM_ID:
+            raise InvalidVMIDException("Invalid VM ID.  Specify a smaller VM ID.")
+        return str(VM_ID)
 
 
 class CentOSKVMAdapter:
@@ -189,10 +168,11 @@ if __name__ == "__main__":
     # appropriate methods.
     platform_adapter = CentOSVZAdapter()
     vm_spec = VMSpec.VMSpec()
-    #platform_adapter.create_VM("99101", vm_spec)
+    platform_adapter.create_VM("99100", vm_spec)
+    platform_adapter.create_VM("99101", vm_spec)
     #platform_adapter.create_VM("99102", vm_spec)
     #platform_adapter.create_VM("99103", vm_spec)
-    #platform_adapter.destroy_VM("99100")
-    #platform_adapter.destroy_VM("99101")
+    platform_adapter.destroy_VM("99100")
+    platform_adapter.destroy_VM("99101")
     #platform_adapter.destroy_VM("99102")
     #platform_adapter.destroy_VM("99103")
