@@ -12,5 +12,4 @@ class VMSpec:
         self.os_version = "12.04"
         self.ram = "256M"
         self.swap = "512M"
-        self.min_diskspace = "2G"
-        self.max_diskspace = "2.5G"
+        self.diskspace = "2G"
