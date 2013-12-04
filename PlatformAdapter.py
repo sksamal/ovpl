@@ -1,7 +1,7 @@
 # Author: Chandan Gupta
 # Contact: chandan@vlabs.ac.in
 
-""" An module for managing VMs on CentOS - OpenVZ platform. """
+""" A module for managing VMs on CentOS - OpenVZ platform. """
 
 __all__ = [
     'create_VM',
@@ -72,7 +72,7 @@ def create_VM(VM_ID, VM_spec):
         subprocess.check_call(VZCTL + " set " + VM_ID + VM_set_args, shell=True)
     except subprocess.CalledProcessError, e:
         raise e
-    return start_VM_manager()
+    return start_VM_manager(VM_ID)
 
 def restart_VM(VM_ID):
     VM_ID = validate_VM_ID(VM_ID)
@@ -81,7 +81,7 @@ def restart_VM(VM_ID):
         subprocess.check_call(VZCTL + " restart " + VM_ID, shell=True)
     except subprocess.CalledProcessError, e:
         raise e
-    return start_VM_manager()
+    return start_VM_manager(VM_ID)
 
 def start_VM_manager(VM_ID):
     # Copy the VMManager package to the VM
@@ -136,7 +136,7 @@ def construct_vzctl_args(VM_spec):
                   " --save"
     return (VM_create_args, VM_set_args)
 
-def find_available_ip(self):
+def find_available_ip():
     # not designed to be concurrent?
     used_ips = subprocess.check_output(VZLIST, shell=True)
     for subnet in SUBNET:
