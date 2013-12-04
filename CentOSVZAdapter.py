@@ -83,11 +83,17 @@ def restart_VM(VM_ID):
         raise e
     return start_VM_manager(VM_ID)
 
+# Function alias
+start_VM = restart_VM
+
 def start_VM_manager(VM_ID):
     # Copy the VMManager package to the VM
     # Start the VMManager on a chosen port
     # Return the VM's IP and port info
-    return (ip_address, VM_MANAGER_PORT)
+    return (get_VM_ip(VM_ID), VM_MANAGER_PORT)
+
+def get_system_resources():
+    pass
 
 def stop_VM(VM_ID):
     VM_ID = validate_VM_ID(VM_ID)
@@ -107,6 +113,9 @@ def destroy_VM(VM_ID):
     # Return success or failure
 
 def is_running_VM(VM_ID):
+    pass
+
+def get_VM_ip(VM_ID):
     pass
 
 def migrate_VM(VM_ID, destination):
