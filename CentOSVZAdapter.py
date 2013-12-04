@@ -69,18 +69,17 @@ def create_vm(vm_id, vm_spec):
     """ VM_specification is a VMSpec object """
     # Create the VM
     vm_id = validate_vm_id(vm_id)
-    (VM_create_args, VM_set_args) = construct_vzctl_args(vm_spec)
+    (vm_create_args, vm_set_args) = construct_vzctl_args(vm_spec)
     try:
-        subprocess.check_call(VZCTL + " create " + vm_id + VM_create_args, shell=True)
+        subprocess.check_call(VZCTL + " create " + vm_id + vm_create_args, shell=True)
         subprocess.check_call(VZCTL + " start " + vm_id, shell=True)
-        subprocess.check_call(VZCTL + " set " + vm_id + VM_set_args, shell=True)
+        subprocess.check_call(VZCTL + " set " + vm_id + vm_set_args, shell=True)
     except subprocess.CalledProcessError, e:
         raise e
     return start_vm_manager(vm_id)
 
 def restart_vm(vm_id):
     vm_id = validate_vm_id(vm_id)
-    # restart VM
     try:
         subprocess.check_call(VZCTL + " restart " + vm_id, shell=True)
     except subprocess.CalledProcessError, e:
@@ -95,7 +94,7 @@ def start_vm_manager(vm_id):
     # Start the VMManager on a chosen port
     # 
     # Return the VM's IP and port info
-    return (get_VM_ip(vm_id), VM_MANAGER_PORT)
+    return (get_vm_ip(vm_id), VM_MANAGER_PORT)
 
 def get_system_resources():
     pass
@@ -120,7 +119,7 @@ def destroy_vm(vm_id):
 def is_running_vm(vm_id):
     pass
 
-def get_VM_ip(vm_id):
+def get_vm_ip(vm_id):
     pass
 
 def migrate_vm(vm_id, destination):
@@ -133,23 +132,23 @@ def take_snapshot(vm_id):
 
 def construct_vzctl_args(vm_spec):
     """ Returns a tuple of vzctl create arguments and set arguments """
-    lab_ID = LAB_ID if VM_spec.lab_ID == "" else VM_spec.lab_ID
+    lab_ID = LAB_ID if vm_spec.lab_ID == "" else vm_spec.lab_ID
     host_name = lab_ID + "." + HOST_NAME
     ip_address = find_available_ip()
-    os_template = find_os_template(vm_spec.os, VM_spec.os_version)
-    (ram, swap) = VMUtils.get_ram_swap(vm_spec.ram, VM_spec.swap)
+    os_template = find_os_template(vm_spec.os, vm_spec.os_version)
+    (ram, swap) = VMUtils.get_ram_swap(vm_spec.ram, vm_spec.swap)
     (disk_soft, disk_hard) = VMUtils.get_disk_space(vm_spec.diskspace)
-    VM_create_args = " --ostemplate " + os_template + \
+    vm_create_args = " --ostemplate " + os_template + \
                      " --ipadd " + ip_address + \
                      " --diskspace " + disk_soft + ":" + disk_hard + \
                      " --hostname " + host_name
     # Note to self: check ram format "0:256M" vs "256M"
-    VM_set_args = " --nameserver " + NAME_SERVER + \
+    vm_set_args = " --nameserver " + NAME_SERVER + \
                   " --ram " + ram + \
                   " --swap " + swap + \
                   " --onboot yes" + \
                   " --save"
-    return (VM_create_args, VM_set_args)
+    return (vm_create_args, vm_set_args)
 
 def find_available_ip():
     # not designed to be concurrent?
