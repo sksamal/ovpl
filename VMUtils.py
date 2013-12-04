@@ -12,8 +12,6 @@ __all__ = [
 
 import re
 
-OS = "Ubuntu"
-OS_VERSION = "12.04"
 RAM = "256M"
 RAM_MAX = "2048M"
 SWAP = "512M"
@@ -67,24 +65,3 @@ def convert_to_megs(value):
         print "Invalid unit"
         return 0
     return quantity
-
-def find_os_template(os, os_version):
-    # What to do when request comes for unavailable OS/version?
-    os = OS.upper() if os == "" else os.strip().upper()
-    os_version = OS_VERSION if os_version == "" else os_version.strip()
-    if os == "UBUNTU":
-        if os_version == "12.04" or os_version == "12":
-            return "ubuntu-12.04-x86_64"
-        elif os_version == "11.10" or os_version == "11":
-            return "ubuntu-11.10-x86_64"
-    elif os == "CENTOS":
-        if os_version == "6.3":
-            return "centos-6.3-x86_64"
-        elif os_version == "6.2":
-            return "centos-6.2-x86_64"
-    elif os == "DEBIAN":
-        if os_version == "6.0" or os_version == "6":
-            return "debian-6.0-x86_64"
-    else:
-        pass
-
