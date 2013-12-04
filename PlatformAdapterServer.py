@@ -32,12 +32,12 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         """ Respond to a POST request """
 
         length = int(self.headers['Content-Length'])
-        post_data = urlparse.parse_qs(self.rfile.read(length).decode('utf-8'))        
-        
+        #post_data = urlparse.parse_qs(self.rfile.read(length).decode('utf-8'))        
+        post_data dict(urlparse.parse_qsl(self.rfile.read(length)))
         vm_spec = VMSpec(post_data)
         platform_adapter = CentOSVZAdapter()
         platform_adapter.create_VM("99100", vm_spec)
-
+    
         return platform_adapter
 
 class ThreadedHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
