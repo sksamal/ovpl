@@ -4,13 +4,14 @@
 """ A module for managing VMs on CentOS - OpenVZ platform. """
 
 __all__ = [
-    'create_VM',
-    'restart_VM',
-    'start_VM_manager',
-    'stop_VM',
-    'destroy_VM',
-    'is_running_VM',
-    'migrate_VM',
+    'create_vm',
+    'start_vm',
+    'stop_vm',
+    'restart_vm',
+    'start_vm_manager',
+    'destroy_vm',
+    'is_running_vm',
+    'migrate_vm',
     'take_snapshot',
     'InvalidVMIDException',
     ]
@@ -26,6 +27,7 @@ import netaddr
 # VLEAD imports
 import VMSpec
 import VMUtils
+import VMManager
 
 # UGLY DUCK PUNCHING: Backporting check_output from 2.7 to 2.6
 if "check_output" not in dir(subprocess):
@@ -51,9 +53,11 @@ VZCTL = "/usr/sbin/vzctl"
 VZLIST = "/usr/sbin/vzlist -a"
 HOST_NAME = "vlabs.ac.in"
 LAB_ID = "engg01"
-MAX_VM_ID = 2147483644      # 32-bit; exact value based on trial-and-error
+MAX_vm_id = 2147483644      # 32-bit; exact value based on trial-and-error
 VM_MANAGER_PORT = 8089
 VM_MANAGER_DIR = "/root/vm_manager"
+OS = "Ubuntu"
+OS_VERSION = "12.04"
 
 
 class InvalidVMIDException(Exception):
@@ -61,79 +65,80 @@ class InvalidVMIDException(Exception):
         Exception.__init__(msg)
 
 
-def create_VM(VM_ID, VM_spec):
+def create_vm(vm_id, vm_spec):
     """ VM_specification is a VMSpec object """
     # Create the VM
-    VM_ID = validate_VM_ID(VM_ID)
-    (VM_create_args, VM_set_args) = construct_vzctl_args(VM_spec)
+    vm_id = validate_vm_id(vm_id)
+    (VM_create_args, VM_set_args) = construct_vzctl_args(vm_spec)
     try:
-        subprocess.check_call(VZCTL + " create " + VM_ID + VM_create_args, shell=True)
-        subprocess.check_call(VZCTL + " start " + VM_ID, shell=True)
-        subprocess.check_call(VZCTL + " set " + VM_ID + VM_set_args, shell=True)
+        subprocess.check_call(VZCTL + " create " + vm_id + VM_create_args, shell=True)
+        subprocess.check_call(VZCTL + " start " + vm_id, shell=True)
+        subprocess.check_call(VZCTL + " set " + vm_id + VM_set_args, shell=True)
     except subprocess.CalledProcessError, e:
         raise e
-    return start_VM_manager(VM_ID)
+    return start_vm_manager(vm_id)
 
-def restart_VM(VM_ID):
-    VM_ID = validate_VM_ID(VM_ID)
+def restart_vm(vm_id):
+    vm_id = validate_vm_id(vm_id)
     # restart VM
     try:
-        subprocess.check_call(VZCTL + " restart " + VM_ID, shell=True)
+        subprocess.check_call(VZCTL + " restart " + vm_id, shell=True)
     except subprocess.CalledProcessError, e:
         raise e
-    return start_VM_manager(VM_ID)
+    return start_vm_manager(vm_id)
 
 # Function alias
-start_VM = restart_VM
+start_vm = restart_vm
 
-def start_VM_manager(VM_ID):
+def start_vm_manager(vm_id):
     # Copy the VMManager package to the VM
     # Start the VMManager on a chosen port
+    # 
     # Return the VM's IP and port info
-    return (get_VM_ip(VM_ID), VM_MANAGER_PORT)
+    return (get_VM_ip(vm_id), VM_MANAGER_PORT)
 
 def get_system_resources():
     pass
 
-def stop_VM(VM_ID):
-    VM_ID = validate_VM_ID(VM_ID)
+def stop_vm(vm_id):
+    vm_id = validate_vm_id(vm_id)
     try:
-        subprocess.check_call(VZCTL + " stop " + VM_ID, shell=True)
+        subprocess.check_call(VZCTL + " stop " + vm_id, shell=True)
     except subprocess.CalledProcessError, e:
         raise e
     # Return success or failure
 
-def destroy_VM(VM_ID):
-    VM_ID = validate_VM_ID(VM_ID)
+def destroy_vm(vm_id):
+    vm_id = validate_vm_id(vm_id)
     try:
-        subprocess.check_call(VZCTL + " stop " + VM_ID, shell=True)
-        subprocess.check_call(VZCTL + " destroy " + VM_ID, shell=True)
+        subprocess.check_call(VZCTL + " stop " + vm_id, shell=True)
+        subprocess.check_call(VZCTL + " destroy " + vm_id, shell=True)
     except subprocess.CalledProcessError, e:
         raise e
     # Return success or failure
 
-def is_running_VM(VM_ID):
+def is_running_vm(vm_id):
     pass
 
-def get_VM_ip(VM_ID):
+def get_VM_ip(vm_id):
     pass
 
-def migrate_VM(VM_ID, destination):
-    VM_ID = validate_VM_ID(VM_ID)
+def migrate_vm(vm_id, destination):
+    vm_id = validate_vm_id(vm_id)
     pass
 
-def take_snapshot(VM_ID):
-    VM_ID = validate_VM_ID(VM_ID)
+def take_snapshot(vm_id):
+    vm_id = validate_vm_id(vm_id)
     pass
 
-def construct_vzctl_args(VM_spec):
+def construct_vzctl_args(vm_spec):
     """ Returns a tuple of vzctl create arguments and set arguments """
     lab_ID = LAB_ID if VM_spec.lab_ID == "" else VM_spec.lab_ID
     host_name = lab_ID + "." + HOST_NAME
     ip_address = find_available_ip()
-    os_template = VMUtils.find_os_template(VM_spec.os, VM_spec.os_version)
-    (ram, swap) = VMUtils.get_ram_swap(VM_spec.ram, VM_spec.swap)
-    (disk_soft, disk_hard) = VMUtils.get_disk_space(VM_spec.diskspace)
+    os_template = find_os_template(vm_spec.os, VM_spec.os_version)
+    (ram, swap) = VMUtils.get_ram_swap(vm_spec.ram, VM_spec.swap)
+    (disk_soft, disk_hard) = VMUtils.get_disk_space(vm_spec.diskspace)
     VM_create_args = " --ostemplate " + os_template + \
                      " --ipadd " + ip_address + \
                      " --diskspace " + disk_soft + ":" + disk_hard + \
@@ -142,6 +147,7 @@ def construct_vzctl_args(VM_spec):
     VM_set_args = " --nameserver " + NAME_SERVER + \
                   " --ram " + ram + \
                   " --swap " + swap + \
+                  " --onboot yes" + \
                   " --save"
     return (VM_create_args, VM_set_args)
 
@@ -159,17 +165,37 @@ def find_available_ip():
                 if ip_address not in used_ips:
                     return ip_address
 
-def validate_VM_ID(VM_ID):
-    VM_ID = str(VM_ID).strip()
-    m = re.match(r'^([0-9]+)$', VM_ID)
+def find_os_template(os, os_version):
+    # What to do when request comes for unavailable OS/version?
+    os = OS.upper() if os == "" else os.strip().upper()
+    os_version = OS_VERSION if os_version == "" else os_version.strip()
+    if os == "UBUNTU":
+        if os_version == "12.04" or os_version == "12":
+            return "ubuntu-12.04-x86_64"
+        elif os_version == "11.10" or os_version == "11":
+            return "ubuntu-11.10-x86_64"
+    elif os == "CENTOS":
+        if os_version == "6.3":
+            return "centos-6.3-x86_64"
+        elif os_version == "6.2":
+            return "centos-6.2-x86_64"
+    elif os == "DEBIAN":
+        if os_version == "6.0" or os_version == "6":
+            return "debian-6.0-x86_64"
+    else:
+        pass
+
+def validate_vm_id(vm_id):
+    vm_id = str(vm_id).strip()
+    m = re.match(r'^([0-9]+)$', vm_id)
     if m == None:
         raise InvalidVMIDException("Invalid VM ID.  VM ID must be numeric.")
-    VM_ID = int(m.group(0))
-    if VM_ID <= 100:
+    vm_id = int(m.group(0))
+    if vm_id <= 100:
         raise InvalidVMIDException("Invalid VM ID.  VM ID must be greater than 100.")
-    if VM_ID > MAX_VM_ID:
+    if vm_id > MAX_vm_id:
         raise InvalidVMIDException("Invalid VM ID.  Specify a smaller VM ID.")
-    return str(VM_ID)
+    return str(vm_id)
 
 
 if __name__ == "__main__":
@@ -177,11 +203,11 @@ if __name__ == "__main__":
     # Parse the invocation command and route to 
     # appropriate methods.
     vm_spec = VMSpec.VMSpec()
-    create_VM("99100", vm_spec)
-    create_VM("99101", vm_spec)
-    #create_VM("99102", vm_spec)
-    #create_VM("99103", vm_spec)
-    destroy_VM("99100")
-    destroy_VM("99101")
-    #destroy_VM("99102")
-    #destroy_VM("99103")
+    create_vm("99100", vm_spec)
+    create_vm("99101", vm_spec)
+    #create_vm("99102", vm_spec)
+    #create_vm("99103", vm_spec)
+    destroy_vm("99100")
+    destroy_vm("99101")
+    #destroy_vm("99102")
+    #destroy_vm("99103")
