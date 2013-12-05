@@ -12,6 +12,7 @@ __all__ = [
     'destroy_vm',
     'is_running_vm',
     'migrate_vm',
+    'get_resource_utilization',
     'take_snapshot',
     'InvalidVMIDException',
     ]
@@ -58,7 +59,9 @@ VM_MANAGER_PORT = 8089
 VM_MANAGER_DIR = "/root/vm_manager"
 OS = "Ubuntu"
 OS_VERSION = "12.04"
-
+IP_ADDRESS_REGEX = "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}"
+#IP_ADDRESS_REGEX = 
+# "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$";
 
 class InvalidVMIDException(Exception):
     def __init__(msg):
@@ -96,7 +99,7 @@ def start_vm_manager(vm_id):
     # Return the VM's IP and port info
     return (get_vm_ip(vm_id), VM_MANAGER_PORT)
 
-def get_system_resources():
+def get_resource_utilization():
     pass
 
 def stop_vm(vm_id):
@@ -117,10 +120,21 @@ def destroy_vm(vm_id):
     # Return success or failure
 
 def is_running_vm(vm_id):
+    vm_id = validate_vm_id(vm_id)
     pass
 
 def get_vm_ip(vm_id):
-    pass
+    vm_id = validate_vm_id(vm_id)
+    try:
+        vzlist = subprocess.check_output(VZLIST + " | grep " + vm_id, shell=True)
+        if vzlist == "":
+            return                                  # raise exception?
+        ip_address = re.match(r'[\s*\w+]*\s+(%s)' % IP_ADDRESS_REGEX, vzlist)
+        if ip_address != None:
+            ip_address = ip_address.group(0)
+        return ip_address
+    except subprocess.CalledProcessError, e:
+        raise e
 
 def migrate_vm(vm_id, destination):
     vm_id = validate_vm_id(vm_id)
